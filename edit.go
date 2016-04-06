@@ -4,6 +4,10 @@
 
 package gocui
 
+import (
+	"github.com/mattn/go-runewidth"
+)
+
 const maxInt = int(^uint(0) >> 1)
 
 // Editor interface must be satisfied by gocui editors.
@@ -83,11 +87,11 @@ func (v *View) EditDelete(back bool) {
 
 			if v.viewLines[y].linesX == 0 { // regular line
 				v.mergeLines(v.cy - 1)
-				if len(v.viewLines[y-1].line) < maxPrevWidth {
+				if runewidth.StringWidth(string(v.viewLines[y-1].line)) < maxPrevWidth {
 					v.MoveCursor(-1, 0, true)
 				}
 			} else { // wrapped line
-				v.deleteRune(len(v.viewLines[y-1].line)-1, v.cy-1)
+				v.deleteRune(runewidth.StringWidth(string(v.viewLines[y-1].line))-1, v.cy-1)
 				v.MoveCursor(-1, 0, true)
 			}
 		} else { // middle/end of the line
@@ -95,7 +99,7 @@ func (v *View) EditDelete(back bool) {
 			v.MoveCursor(-1, 0, true)
 		}
 	} else {
-		if x == len(v.viewLines[y].line) { // end of the line
+		if x == runewidth.StringWidth(string(v.viewLines[y].line)) { // end of the line
 			v.mergeLines(v.cy)
 		} else { // start/middle of the line
 			v.deleteRune(v.cx, v.cy)
@@ -135,7 +139,7 @@ func (v *View) MoveCursor(dx, dy int, writeMode bool) {
 		}
 	} else {
 		if y >= 0 && y < len(v.viewLines) {
-			curLineWidth = len(v.viewLines[y].line)
+			curLineWidth = runewidth.StringWidth(string(v.viewLines[y].line))
 			if v.Wrap && curLineWidth >= maxX {
 				curLineWidth = maxX - 1
 			}
@@ -145,7 +149,7 @@ func (v *View) MoveCursor(dx, dy int, writeMode bool) {
 	}
 	// get the width of the previous line
 	if y-1 >= 0 && y-1 < len(v.viewLines) {
-		prevLineWidth = len(v.viewLines[y-1].line)
+		prevLineWidth = runewidth.StringWidth(string(v.viewLines[y-1].line))
 	} else {
 		prevLineWidth = 0
 	}

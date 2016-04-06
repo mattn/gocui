@@ -6,9 +6,40 @@ package gocui
 
 import (
 	"errors"
+	"runtime"
 
 	"github.com/nsf/termbox-go"
 )
+
+var (
+	hbar  = '─'
+	vbar  = '│'
+	lbar  = '├'
+	rbar  = '┤'
+	tbar  = '┬'
+	bbar  = '┴'
+	cross = '┼'
+	tlcor = '┌'
+	trcor = '┐'
+	blcor = '└'
+	brcor = '┘'
+)
+
+func init() {
+	if runtime.GOOS == "windows" {
+		hbar = '-'
+		vbar = '|'
+		lbar = '|'
+		rbar = '|'
+		tbar = '-'
+		bbar = '-'
+		cross = '+'
+		tlcor = '+'
+		trcor = '+'
+		blcor = '+'
+		brcor = '+'
+	}
+}
 
 // Handler represents a handler that can be used to update or modify the GUI.
 type Handler func(*Gui) error
@@ -368,12 +399,12 @@ func (g *Gui) drawFrame(v *View) error {
 			continue
 		}
 		if v.y0 > -1 && v.y0 < g.maxY {
-			if err := g.SetRune(x, v.y0, '─'); err != nil {
+			if err := g.SetRune(x, v.y0, hbar); err != nil {
 				return err
 			}
 		}
 		if v.y1 > -1 && v.y1 < g.maxY {
-			if err := g.SetRune(x, v.y1, '─'); err != nil {
+			if err := g.SetRune(x, v.y1, hbar); err != nil {
 				return err
 			}
 		}
@@ -383,12 +414,12 @@ func (g *Gui) drawFrame(v *View) error {
 			continue
 		}
 		if v.x0 > -1 && v.x0 < g.maxX {
-			if err := g.SetRune(v.x0, y, '│'); err != nil {
+			if err := g.SetRune(v.x0, y, vbar); err != nil {
 				return err
 			}
 		}
 		if v.x1 > -1 && v.x1 < g.maxX {
-			if err := g.SetRune(v.x1, y, '│'); err != nil {
+			if err := g.SetRune(v.x1, y, vbar); err != nil {
 				return err
 			}
 		}
@@ -498,23 +529,23 @@ func (g *Gui) intersectionRune(x, y int) (rune, bool) {
 	var ch rune
 	switch {
 	case !top && bottom && !left && right:
-		ch = '┌'
+		ch = tlcor
 	case !top && bottom && left && !right:
-		ch = '┐'
+		ch = trcor
 	case top && !bottom && !left && right:
-		ch = '└'
+		ch = blcor
 	case top && !bottom && left && !right:
-		ch = '┘'
+		ch = brcor
 	case top && bottom && left && right:
-		ch = '┼'
+		ch = cross
 	case top && bottom && !left && right:
-		ch = '├'
+		ch = lbar
 	case top && bottom && left && !right:
-		ch = '┤'
+		ch = rbar
 	case !top && bottom && left && right:
-		ch = '┬'
+		ch = tbar
 	case top && !bottom && left && right:
-		ch = '┴'
+		ch = bbar
 	default:
 		return ' ', false
 	}
@@ -523,7 +554,7 @@ func (g *Gui) intersectionRune(x, y int) (rune, bool) {
 
 // verticalRune returns if the given character is a vertical rune.
 func verticalRune(ch rune) bool {
-	if ch == '│' || ch == '┼' || ch == '├' || ch == '┤' {
+	if ch == vbar || ch == cross || ch == lbar || ch == rbar {
 		return true
 	}
 	return false
@@ -531,7 +562,7 @@ func verticalRune(ch rune) bool {
 
 // verticalRune returns if the given character is a horizontal rune.
 func horizontalRune(ch rune) bool {
-	if ch == '─' || ch == '┼' || ch == '┬' || ch == '┴' {
+	if ch == hbar || ch == cross || ch == tbar || ch == bbar {
 		return true
 	}
 	return false

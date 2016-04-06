@@ -10,6 +10,7 @@ import (
 	"io"
 	"strings"
 
+	"github.com/mattn/go-runewidth"
 	"github.com/nsf/termbox-go"
 )
 
@@ -83,7 +84,7 @@ func newView(name string, x0, y0, x1, y1 int) *View {
 
 // Size returns the number of visible columns and rows in the View.
 func (v *View) Size() (x, y int) {
-	return v.x1 - v.x0 - 1, v.y1 - v.y0 - 1
+	return v.x1 - v.x0 - 3, v.y1 - v.y0 - 1
 }
 
 // Name returns the name of the view.
@@ -215,7 +216,7 @@ func (v *View) draw() error {
 		v.viewLines = nil
 		for i, line := range v.lines {
 			if v.Wrap {
-				if len(line) <= maxX {
+				if runewidth.StringWidth(string(line)) <= maxX {
 					vline := viewLine{linesX: 0, linesY: i, line: line}
 					v.viewLines = append(v.viewLines, vline)
 					continue
@@ -225,7 +226,7 @@ func (v *View) draw() error {
 				}
 				// Append remaining lines
 				for n := maxX; n < len(line); n += maxX {
-					if len(line[n:]) <= maxX {
+					if runewidth.StringWidth(string(line[n:])) <= maxX {
 						vline := viewLine{linesX: n, linesY: i, line: line[n:]}
 						v.viewLines = append(v.viewLines, vline)
 					} else {
@@ -286,11 +287,19 @@ func (v *View) realPosition(vx, vy int) (x, y int, err error) {
 
 	if vy < len(v.viewLines) {
 		vline := v.viewLines[vy]
-		x = vline.linesX + vx
+		x = 0
+		for _, c := range vline.line {
+			cw := runewidth.RuneWidth(c)
+			if x+cw > vx {
+				break
+			}
+			x += cw
+		}
+		x += vline.linesX
 		y = vline.linesY
 	} else {
 		vline := v.viewLines[len(v.viewLines)-1]
-		x = vx
+		x = vline.linesX + runewidth.StringWidth(string(vline.line[:vx]))
 		y = vline.linesY + vy - len(v.viewLines) + 1
 	}
 
@@ -337,9 +346,9 @@ func (v *View) writeRune(x, y int, ch rune) error {
 		v.lines = append(v.lines, s...)
 	}
 
-	olen := len(v.lines[y])
-	if x >= len(v.lines[y]) {
-		s := make([]rune, x-len(v.lines[y])+1)
+	olen := runewidth.StringWidth(string(v.lines[y]))
+	if x >= runewidth.StringWidth(string(v.lines[y])) {
+		s := make([]rune, x-runewidth.StringWidth(string(v.lines[y]))+1)
 		v.lines[y] = append(v.lines[y], s...)
 	}
 
@@ -361,10 +370,14 @@ func (v *View) deleteRune(x, y int) error {
 		return err
 	}
 
-	if x < 0 || y < 0 || y >= len(v.lines) || x >= len(v.lines[y]) {
+	if x < 0 || y < 0 || y >= len(v.lines) || x >= runewidth.StringWidth(string(v.lines[y])) {
 		return errors.New("invalid point")
 	}
-	v.lines[y] = append(v.lines[y][:x], v.lines[y][x+1:]...)
+	cw := runewidth.RuneWidth(v.lines[y][x])
+	v.lines[y] = append(v.lines[y][:x], v.lines[y][x+cw:]...)
+	if cw > 1 {
+		v.cx--
+	}
 	return nil
 }
 
@@ -403,7 +416,7 @@ func (v *View) breakLine(x, y int) error {
 	}
 
 	var left, right []rune
-	if x < len(v.lines[y]) { // break line
+	if x < runewidth.StringWidth(string(v.lines[y])) { // break line
 		left = make([]rune, len(v.lines[y][:x]))
 		copy(left, v.lines[y][:x])
 		right = make([]rune, len(v.lines[y][x:]))
@@ -463,7 +476,7 @@ func (v *View) Word(x, y int) (string, error) {
 		return "", err
 	}
 
-	if x < 0 || y < 0 || y >= len(v.lines) || x >= len(v.lines[y]) {
+	if x < 0 || y < 0 || y >= len(v.lines) || x >= runewidth.StringWidth(string(v.lines[y])) {
 		return "", errors.New("invalid point")
 	}
 	l := string(v.lines[y])
